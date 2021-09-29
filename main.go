@@ -2,12 +2,16 @@ package main
 
 import (
 	"math"
+	"runtime"
 
 	"github.com/Planutim/myopengl"
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 )
 
+func init() {
+	runtime.LockOSThread()
+}
 func main() {
 	window := myopengl.InitGlfw(800, 600)
 	window.SetKeyCallback(keyCallback)
@@ -16,12 +20,17 @@ func main() {
 
 	vao := makeVao(false)
 
+	tex := makeTexture()
 	for !window.ShouldClose() {
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
 		shader.Use()
+		shader.SetInt("u_texture", 0)
 
 		gl.BindVertexArray(vao)
+
+		gl.ActiveTexture(gl.TEXTURE0)
+		gl.BindTexture(gl.TEXTURE_2D, tex)
 
 		gl.DrawArrays(gl.TRIANGLES, 0, 6)
 
@@ -63,6 +72,23 @@ func makeVao(inverted bool) uint32 {
 	gl.VertexAttribPointer(0, 4, gl.FLOAT, false, 0, gl.PtrOffset(0))
 
 	return vao
+}
+
+func makeTexture() uint32 {
+	var tex uint32
+	gl.GenTextures(1, &tex)
+	gl.BindTexture(gl.TEXTURE_2D, tex)
+	defer gl.BindTexture(gl.TEXTURE_2D, 0)
+
+	img := myopengl.LoadImage("water.jpg")
+
+	// fmt.Println("STRIDE IS: ", img.Stride)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(img.Rect.Dx()), int32(img.Rect.Dy()), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
+
+	return tex
 }
 
 func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
