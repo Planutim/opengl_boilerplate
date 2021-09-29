@@ -12,6 +12,11 @@ import (
 func init() {
 	runtime.LockOSThread()
 }
+
+var (
+	offset [2]float32
+)
+
 func main() {
 	window := myopengl.InitGlfw(800, 600)
 	window.SetKeyCallback(keyCallback)
@@ -26,6 +31,7 @@ func main() {
 
 		shader.Use()
 		shader.SetInt("u_texture", 0)
+		shader.SetVec2F("offset", offset[0], offset[1])
 
 		gl.BindVertexArray(vao)
 
@@ -86,13 +92,32 @@ func makeTexture() uint32 {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
+
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(img.Rect.Dx()), int32(img.Rect.Dy()), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
 
 	return tex
 }
 
+var offsetValue float32 = 0.01
+
 func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 	if key == glfw.KeyEscape {
 		w.SetShouldClose(true)
+	}
+
+	if key == glfw.KeyLeft {
+		offset[0] -= offsetValue
+	}
+	if key == glfw.KeyRight {
+		offset[0] += offsetValue
+	}
+	if key == glfw.KeyUp {
+		offset[1] += offsetValue
+	}
+
+	if key == glfw.KeyDown {
+		offset[1] -= offsetValue
 	}
 }
