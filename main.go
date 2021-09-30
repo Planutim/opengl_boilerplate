@@ -1,25 +1,41 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"runtime"
 
 	"github.com/Planutim/myopengl"
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/go-gl/mathgl/mgl32"
 )
 
 func init() {
 	runtime.LockOSThread()
 }
 
+const (
+	WINDOW_WIDTH  = 800
+	WINDOW_HEIGHT = 600
+)
+
 var (
 	offset [2]float32
 )
+var offsetValue float32 = 0.01
+var u_center mgl32.Vec2 = mgl32.Vec2{0.5, 0.5}
+var centerIncValue float32 = 0.01
+var u_force float32 = 0
+var forceIncValue float32 = 0.01
+
+var repeatVal int32 = gl.CLAMP_TO_EDGE
 
 func main() {
-	window := myopengl.InitGlfw(800, 600)
+	window := myopengl.InitGlfw(WINDOW_WIDTH, WINDOW_HEIGHT)
 	window.SetKeyCallback(keyCallback)
+	window.SetCursorPosCallback(mouseCallback)
+	window.SetMouseButtonCallback(mousePressCallback)
 
 	shader := myopengl.NewShader("shaders/shader.vert", "shaders/shader.frag")
 
@@ -31,7 +47,10 @@ func main() {
 
 		shader.Use()
 		shader.SetInt("u_texture", 0)
-		shader.SetVec2F("offset", offset[0], offset[1])
+
+		shader.SetVec2("u_center", &u_center)
+		shader.SetFloat("u_force", u_force)
+		shader.SetFloat("u_ratio", float32(WINDOW_WIDTH)/float32(WINDOW_HEIGHT))
 
 		gl.BindVertexArray(vao)
 
@@ -92,15 +111,13 @@ func makeTexture() uint32 {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
+	// gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
+	// gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
 
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(img.Rect.Dx()), int32(img.Rect.Dy()), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
 
 	return tex
 }
-
-var offsetValue float32 = 0.01
 
 func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 	if key == glfw.KeyEscape {
@@ -108,16 +125,91 @@ func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action,
 	}
 
 	if key == glfw.KeyLeft {
-		offset[0] -= offsetValue
+		u_center = u_center.Add(mgl32.Vec2{-centerIncValue, 0})
+		// offset[0] -= offsetValue
 	}
 	if key == glfw.KeyRight {
-		offset[0] += offsetValue
+		u_center = u_center.Add(mgl32.Vec2{centerIncValue, 0})
+		// offset[0] += offsetValue
 	}
 	if key == glfw.KeyUp {
-		offset[1] += offsetValue
+		u_center = u_center.Add(mgl32.Vec2{0, -centerIncValue})
+		// offset[1] += offsetValue
 	}
 
 	if key == glfw.KeyDown {
-		offset[1] -= offsetValue
+		u_center = u_center.Add(mgl32.Vec2{0, centerIncValue})
+		// offset[1] -= offsetValue
+	}
+
+	if key == glfw.KeyKPAdd {
+		if math.Abs(float64(u_force)) < 1 {
+			u_force += forceIncValue
+		} else {
+			u_force += forceIncValue * u_force
+		}
+	}
+	if key == glfw.KeyKPSubtract {
+		if math.Abs(float64(u_force)) < 1 {
+			u_force += -forceIncValue
+		} else {
+			u_force += -forceIncValue * u_force
+		}
+	}
+
+	if mods == glfw.ModShift {
+		changed := false
+		switch key {
+		case glfw.Key1:
+			repeatVal = gl.CLAMP_TO_EDGE
+			fmt.Println("CLAMP_TO_EDGE")
+			changed = true
+		case glfw.Key2:
+			repeatVal = gl.CLAMP_TO_BORDER
+			fmt.Println("CLAMP_TO_BORDER")
+			changed = true
+
+		case glfw.Key3:
+			repeatVal = gl.REPEAT
+			fmt.Println("REPEAT")
+			changed = true
+
+		case glfw.Key4:
+			repeatVal = gl.MIRRORED_REPEAT
+			fmt.Println("MIRRORED_REPEAT")
+			changed = true
+
+		}
+
+		if changed {
+			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, repeatVal)
+			gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, repeatVal)
+
+		}
+
+	} else {
+		fmt.Printf("center: %v, force: %v\n", u_center, u_force)
+	}
+
+}
+
+func mouseCallback(w *glfw.Window, xpos, ypos float64) {
+
+	if mousePressed {
+		xoff := xpos / WINDOW_WIDTH
+		yoff := ypos / WINDOW_HEIGHT
+		u_center = mgl32.Vec2{float32(xoff), float32(yoff)}
+		fmt.Println(xpos/WINDOW_WIDTH, "   ", ypos/WINDOW_HEIGHT)
+	}
+}
+
+var mousePressed bool = false
+
+func mousePressCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
+	if action == glfw.Press && button == glfw.MouseButton1 {
+		mousePressed = true
+	}
+	if action == glfw.Release && button == glfw.MouseButton1 {
+		mousePressed = false
 	}
 }
