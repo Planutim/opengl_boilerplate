@@ -15,7 +15,7 @@ func init() {
 	runtime.LockOSThread()
 }
 
-const (
+var (
 	WINDOW_WIDTH  = 800
 	WINDOW_HEIGHT = 600
 )
@@ -26,16 +26,19 @@ var (
 var offsetValue float32 = 0.01
 var u_center mgl32.Vec2 = mgl32.Vec2{0.5, 0.5}
 var centerIncValue float32 = 0.01
-var u_force float32 = 0
+var u_force float32 = 0.2
 var forceIncValue float32 = 0.01
 
 var repeatVal int32 = gl.CLAMP_TO_EDGE
+
+var isCircle = false
 
 func main() {
 	window := myopengl.InitGlfw(WINDOW_WIDTH, WINDOW_HEIGHT)
 	window.SetKeyCallback(keyCallback)
 	window.SetCursorPosCallback(mouseCallback)
 	window.SetMouseButtonCallback(mousePressCallback)
+	window.SetFramebufferSizeCallback(sizeCallback)
 
 	shader := myopengl.NewShader("shaders/shader.vert", "shaders/shader.frag")
 
@@ -50,7 +53,14 @@ func main() {
 
 		shader.SetVec2("u_center", &u_center)
 		shader.SetFloat("u_force", u_force)
-		shader.SetFloat("u_ratio", float32(WINDOW_WIDTH)/float32(WINDOW_HEIGHT))
+
+		ratio := float32(WINDOW_WIDTH) / float32(WINDOW_HEIGHT)
+		// fmt.Println(ratio)
+
+		shader.SetBool("u_circle", isCircle)
+
+		// fmt.Println("RATIO: ", ratio)
+		shader.SetFloat("u_ratio", ratio)
 
 		gl.BindVertexArray(vao)
 
@@ -157,6 +167,17 @@ func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action,
 		}
 	}
 
+	if action == glfw.Press && key == glfw.KeyY {
+		isCircle = !isCircle
+
+		fmt.Println("is circle: ", isCircle)
+	}
+
+	if action == glfw.Press && key == glfw.KeyT {
+		enabled = !enabled
+		fmt.Println("Mouse drag enabled: ", enabled)
+	}
+
 	if mods == glfw.ModShift {
 		changed := false
 		switch key {
@@ -195,21 +216,28 @@ func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action,
 
 func mouseCallback(w *glfw.Window, xpos, ypos float64) {
 
-	if mousePressed {
-		xoff := xpos / WINDOW_WIDTH
-		yoff := ypos / WINDOW_HEIGHT
+	if enabled {
+		xoff := xpos / float64(WINDOW_WIDTH)
+		yoff := ypos / float64(WINDOW_HEIGHT)
 		u_center = mgl32.Vec2{float32(xoff), float32(yoff)}
-		fmt.Println(xpos/WINDOW_WIDTH, "   ", ypos/WINDOW_HEIGHT)
+		fmt.Println(xoff, "   ", yoff)
 	}
 }
 
-var mousePressed bool = false
+var enabled bool = true
 
 func mousePressCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
 	if action == glfw.Press && button == glfw.MouseButton1 {
-		mousePressed = true
+		enabled = true
 	}
 	if action == glfw.Release && button == glfw.MouseButton1 {
-		mousePressed = false
+		enabled = false
 	}
+}
+
+func sizeCallback(w *glfw.Window, width, height int) {
+	fmt.Println(width, "   w:h    ", height)
+	WINDOW_WIDTH = width
+	WINDOW_HEIGHT = height
+	gl.Viewport(0, 0, int32(width), int32(height))
 }
