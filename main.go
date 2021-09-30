@@ -32,6 +32,10 @@ var forceIncValue float32 = 0.01
 var repeatVal int32 = gl.CLAMP_TO_EDGE
 
 var isCircle = false
+var size float32 = 0.3
+
+var use_mask = true
+var thickness float32
 
 func main() {
 	window := myopengl.InitGlfw(WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -53,11 +57,16 @@ func main() {
 
 		shader.SetVec2("u_center", &u_center)
 		shader.SetFloat("u_force", u_force)
+		shader.SetFloat("u_size", size)
 
 		ratio := float32(WINDOW_WIDTH) / float32(WINDOW_HEIGHT)
 		// fmt.Println(ratio)
 
 		shader.SetBool("u_circle", isCircle)
+
+		shader.SetBool("use_mask", use_mask)
+
+		shader.SetFloat("u_thickness", thickness)
 
 		// fmt.Println("RATIO: ", ratio)
 		shader.SetFloat("u_ratio", ratio)
@@ -165,6 +174,21 @@ func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action,
 		} else {
 			u_force += -forceIncValue * u_force
 		}
+	}
+
+	if key == glfw.Key5 {
+		size += 0.01
+		fmt.Println("size: ", size)
+
+	}
+	if key == glfw.Key6 {
+		size -= 0.01
+		fmt.Println("size: ", size)
+	}
+
+	if key == glfw.KeyU && action == glfw.Press {
+		use_mask = !use_mask
+		fmt.Println("Use Mask: ", use_mask)
 	}
 
 	if action == glfw.Press && key == glfw.KeyY {
